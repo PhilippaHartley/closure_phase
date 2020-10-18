@@ -296,8 +296,8 @@ pix_size = 0.01
 np.random.seed(1)
 for i in range(4):
     randoms = np.random.rand(5,10000)
-    N = 2084 # 0.1 arcsec each
-    # put sources in central 20 pix (2 arcsec)
+    N = 2084 
+    # put sources in central  (2 arcsec)
     x1 = (N/2-1/pix_size)+np.int(randoms[0,i]*(2/pix_size))
     y1 = (N/2-1/pix_size)+np.int(randoms[1,i]*(2/pix_size))
     x2 = (N/2-1/pix_size)+np.int(randoms[2,i]*(2/pix_size))
