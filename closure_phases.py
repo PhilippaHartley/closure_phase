@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 from math import sin, cos, sqrt, atan2, radians
 from PIL import Image
-
+from astropy.io import fits
 def mkgauss2():
 
     x, y = np.meshgrid(np.linspace(-1,1,10), np.linspace(-1,1,10))
@@ -62,7 +62,7 @@ def mkgauss (naxes,pos,flux,fwhm,axrat=1.0,angle=0.0,ignore=4.0,dodist=False):
     return a 
 
 def make_dynspec(lat1,lon1,lat2,lon2,Z):
-    uv_centre = int(N/2)
+    uv_centre = int(len(Z)/2)
     R = 6371
     rad = (2.*np.pi)/360.
     print (dec)
@@ -80,9 +80,11 @@ def make_dynspec(lat1,lon1,lat2,lon2,Z):
     dz = z2-z1
     us = np.array([])
     vs = np.array([])
-    lamrang = np.linspace(1,1.05,100)
-    hrang =  np.arange(0,120,0.4)
-
+    channels = 64
+    sfreq = 1.4e9
+    ch_width = 0.002e9
+    lamrang = np.linspace(c/sfreq,c/(sfreq+((channels+1)*ch_width)),channels)  
+    hrang =  np.arange(0,120,1)
     dynspec = np.zeros((len(lamrang), len(hrang)))
     print (dynspec.shape)
     phase_plot = np.angle(Z)
@@ -93,19 +95,38 @@ def make_dynspec(lat1,lon1,lat2,lon2,Z):
             h = h*rad
             u = np.sin(h)*dx+np.cos(h)*dy
             v = -np.sin(raddec)*np.cos(h)*dx+np.sin(raddec)*np.sin(h)*dy+np.cos(raddec)*dz
-        
+            blength1 = (np.hypot(u,v))# in km!!!
        
-            u/=(10000/100)
-            v/=(10000/100)
-            u*=20
-            v*=20
-            u = (u/np.float(lam)).astype(np.int)+uv_centre
-            v = (v/np.float(lam)).astype(np.int)+uv_centre
-            us = np.append(us,u)
-            vs = np.append(vs,v)
-     
+            theta1rad = lam/(blength1*1000)
+
+            theta1arcsec = theta1rad*rad2arcsec
+ 
 
            
+       
+
+            u*=1000 # in m
+            v*=1000
+
+            u/=lam # in lam
+            v/=lam #
+
+            u/=1000# in klam
+            v/=1000
+
+
+            # each pixel of the fft2 is a frequemcy mode, with mode 0 at centre and nyquist mode at edge
+            # maxfreq = 1/pixsize = 1/0.1 arcsec = 10?
+            nyquist = 1/pix_size
+          
+            scale = nyquist/(len(Z)/2.)
+            u*=scale
+            v*=scale # deal with pix size?
+            u = (u).astype(np.int)+uv_centre
+            v = (v).astype(np.int)+uv_centre
+          
+            us = np.append(us,u)
+            vs = np.append(vs,v)          
             phas = phase_plot[u,v]
        
             dynspec[lamcount,hcount]+=phas
@@ -122,7 +143,7 @@ def make_sources(x1,y1,x2,y2,dec,num):
     xf = np.zeros((N, N))
     source_box_size = [101,101]
   #  g = mkgauss([source_box_size[0],source_box_size[1]], [(source_box_size[0]-1)/2-1,(source_box_size[1]-1)/2], 1, 3)
-    g = mkgauss([101,101], [50,50], 1, 50)
+    g = mkgauss([101,101], [50,50], 1, 5)
 
 
  
@@ -139,14 +160,19 @@ def make_sources(x1,y1,x2,y2,dec,num):
     #xf[x1, y1] = 10
     #xf[x1, y1] = 10
 
-    plt.imshow(xf)
-    plt.show()
-    Z = np.fft.fftshift(np.fft.fft2(xf))
-    plt.imshow(np.angle(Z))
-    plt.show()
 
-    plt.imshow((np.abs(Z)))
-    plt.show()
+
+    # load real data
+    #xf = fits.getdata('../closure_phases_casa/example.fits')
+
+
+
+    if doplot:
+        plt.imshow(xf)
+        plt.show()
+    Z = np.fft.fftshift(np.fft.fft2(xf))
+
+
 
     
     fig = plt.figure(figsize=(5,5))
@@ -163,6 +189,9 @@ def make_sources(x1,y1,x2,y2,dec,num):
     Jodrell = [53.2369, -2.3075]
     Yebes = [40.5336, 3.1112]
 
+    Goonhilly =[50.048056, -5.181944]
+    Cambridge = [52.167, 0.037056]
+
     #a source at dec 90 will trace the most circular ellipse in uv
 
 
@@ -170,12 +199,12 @@ def make_sources(x1,y1,x2,y2,dec,num):
     # approximate radius of earth in km
     R = 6373.0
     
-    lat1 = (lat_longs[2,0])*rad
-    lon1 = (lat_longs[2,1])*rad
-    lat2 = (lat_longs[0,0])*rad
-    lon2 = (lat_longs[0,1])*rad
-    lat3 = (lat_longs[7,0])*rad
-    lon3 = (lat_longs[7,1])*rad
+    lat1 = (Jodrell[0])*rad
+    lon1 = (Jodrell[1])*rad
+    lat3 = (Goonhilly[0])*rad
+    lon3 = (Goonhilly[1])*rad
+    lat2 = (Cambridge[0])*rad
+    lon2 = (Cambridge[1])*rad
     
  
 
@@ -184,28 +213,69 @@ def make_sources(x1,y1,x2,y2,dec,num):
     p3,us3,vs3 = make_dynspec(lat2,lon2,lat3,lon3,Z)
 
 
-    plt.imshow(p1)
+    plt.imshow(p1, cmap = 'jet')
     plt.show()
-    plt.imshow(p2)
+    plt.imshow(p2, cmap = 'jet')
     plt.show()
-    plt.imshow(p3)
+    plt.imshow(p3, cmap = 'jet')
     plt.show()
+
+
+    wrap_factor = 10.
+    print (p1.shape)
+    for i in range(len(p1[:,0])):
+        print (i)
+
+        p1_i = np.unwrap(p1[i,:]*wrap_factor, discont = 0.1)/wrap_factor
+
+        try:
+            uw_p1_all =  np.vstack((uw_p1_all, p1_i))
+        except:
+            uw_p1_all =p1_i
+
+
+
+    for i in range(len(uw_p1_all[0,:])):
+        print (i)
+
+        p1_i2 = np.unwrap(uw_p1_all[:,i]*wrap_factor, discont = 0.1)/wrap_factor
+
+        try:
+            uw_p1_all2 =  np.vstack((uw_p1_all2, p1_i2))
+        except:
+            uw_p1_all2 =p1_i2
+
+
+    plt.clf()
+    plt.imshow(uw_p1_all.T, origin = 'lower', cmap = 'jet')
+    plt.colorbar()
+ #   plt.show()
+    #plt.savefig('unwrapped_dynspc_stacked.png')
+    plt.clf() 
+
+    plt.clf()
+    plt.imshow(uw_p1_all2.T, origin = 'lower', cmap = 'jet')
+    plt.colorbar()
+    plt.show()
+    #plt.savefig('unwrapped_dynspc_stacked.png')
+    plt.clf() 
+
+
+    '''
+   
     closphasdynspec = p1+p2-p3 
 
-    print (us1, vs1)
-    print (us2, vs2)
-    print (us3, vs3)
 
-
-    # plot uv coverage of the three antennae (making three baselines)
-    plt.scatter(us1,vs1)
-    plt.scatter(us2,vs2)
-    plt.scatter(us3,vs3)
-    plt.show()
-    plt.scatter(np.arange(len(closphasdynspec[:,0])),closphasdynspec[:,0] )
-    plt.show()
-    plt.scatter(np.arange(len(closphasdynspec[0,:])),closphasdynspec[0,:] )
-    plt.show()
+    if doplot:
+        # plot uv coverage of the three antennae (making three baselines)
+        plt.scatter(us1,vs1)
+        plt.scatter(us2,vs2)
+        plt.scatter(us3,vs3)
+        plt.show()
+        plt.scatter(np.arange(len(closphasdynspec[:,0])),closphasdynspec[:,0] )
+        plt.show()
+        plt.scatter(np.arange(len(closphasdynspec[0,:])),closphasdynspec[0,:] )
+        plt.show()
     
     fig = plt.figure(figsize=(5,5))
     plt.imshow(closphasdynspec, interpolation = 'none')
@@ -216,29 +286,25 @@ def make_sources(x1,y1,x2,y2,dec,num):
     plt.close()
     
     
-    
-
-    all_us = np.append(us1,us2)
-    all_vs = np.append(vs1,vs2)
-    all_us = np.append(all_us,us3)
-    all_vs = np.append(all_vs,vs3)
+    '''
 
 
-    
-    
+rad2arcsec = 206265.
+c = 3e8
+doplot = 0
+pix_size = 0.01
 np.random.seed(1)
-for i in range(1):
+for i in range(4):
     randoms = np.random.rand(5,10000)
-    N = 513*2
-    x1 = 20+np.int(randoms[0,i]*(N-40))
-    y1 = 20+np.int(randoms[1,i]*(N-40))
-    x2 = 20+np.int(randoms[2,i]*(N-40))
-    y2 = 20+np.int(randoms[3,i]*(N-40))
+    N = 2084 # 0.1 arcsec each
+    # put sources in central 20 pix (2 arcsec)
+    x1 = (N/2-1/pix_size)+np.int(randoms[0,i]*(2/pix_size))
+    y1 = (N/2-1/pix_size)+np.int(randoms[1,i]*(2/pix_size))
+    x2 = (N/2-1/pix_size)+np.int(randoms[2,i]*(2/pix_size))
+    y2 = (N/2-1/pix_size)+np.int(randoms[3,i]*(2/pix_size))
     dec = 60#randoms[4,i]*90
-    x1 = 80*2
-    y1 = 250*2
-    x2 = 350*2
-    y2 = 250*2
+
+
 
   
     make_sources(x1,y1,x2,y2,dec,i)
