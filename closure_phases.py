@@ -253,18 +253,25 @@ def make_sources(x1,y1,x2,y2,dec,num):
     if doplot:
         plt.clf()
         plt.imshow(uw_p1_all2.T, origin = 'lower')
+        plt.xlabel('time')
+        plt.ylabel('frequency')
         plt.colorbar()
         plt.show()
       #  plt.savefig('unwrapped_dynspc_stacked.png')
         plt.clf() 
       
         plt.imshow(uw_p2_all2.T, origin = 'lower')
+        plt.xlabel('time')
+        plt.ylabel('frequency')
         plt.colorbar()
+
         plt.show()
       #  plt.savefig('unwrapped_dynspc_stacked.png')
         plt.clf() 
             
         plt.imshow(uw_p3_all2.T, origin = 'lower')
+        plt.xlabel('time')
+        plt.ylabel('frequency')
         plt.colorbar()
         plt.show()
       #  plt.savefig('unwrapped_dynspc_stacked.png')
@@ -285,6 +292,8 @@ def make_sources(x1,y1,x2,y2,dec,num):
     
     fig = plt.figure(figsize=(5,5))
     plt.imshow(closphasdynspec.T, interpolation = 'none')
+    plt.xlabel('time')
+    plt.ylabel('frequency')    
     plt.axis("off")
     plt.subplots_adjust(top = 1, bottom = 0, right = 1, left = 0, hspace = 0, wspace = 0) 
     plt.savefig('training_images/A/'+np.str(num)+'.png', box_inches='tight', dpi=64)
