@@ -5,16 +5,7 @@ import matplotlib.cm as cm
 from math import sin, cos, sqrt, atan2, radians
 from PIL import Image
 from astropy.io import fits
-def mkgauss2():
 
-    x, y = np.meshgrid(np.linspace(-1,1,10), np.linspace(-1,1,10))
-    print (x,y)
-    d = np.sqrt(x*x+y*y)
-    sigma, mu = 1.0, 0.5
-    g = np.exp(-( (d-mu)**2 / ( 2.0 * sigma**2 ) ) )
-    print("2D Gaussian-like array:")
-    plt.imshow(g)
-    plt.show()
 
 
 def mkgauss (naxes,pos,flux,fwhm,axrat=1.0,angle=0.0,ignore=4.0,dodist=False):
@@ -65,10 +56,10 @@ def make_dynspec(lat1,lon1,lat2,lon2,Z):
     uv_centre = int(len(Z)/2)
     R = 6371
     rad = (2.*np.pi)/360.
-    print (dec)
+   
     raddec = dec*rad
     x1 = R*np.cos(lon1)*np.cos(lat1)
-   # print R
+  
 
     y1 = R*np.sin(lon1)*np.cos(lat1)
     z1 = R*np.sin(lat1)
@@ -80,13 +71,11 @@ def make_dynspec(lat1,lon1,lat2,lon2,Z):
     dz = z2-z1
     us = np.array([])
     vs = np.array([])
-    channels = 64
-    sfreq = 1.4e9
-    ch_width = 0.002e9
+
     lamrang = np.linspace(c/sfreq,c/(sfreq+((channels+1)*ch_width)),channels)  
     hrang =  np.arange(0,120,1)
     dynspec = np.zeros((len(lamrang), len(hrang)))
-    print (dynspec.shape)
+
     phase_plot = np.angle(Z)
     for lamcount, lam in enumerate(lamrang):
         
@@ -98,30 +87,26 @@ def make_dynspec(lat1,lon1,lat2,lon2,Z):
             blength1 = (np.hypot(u,v))# in km!!!
        
             theta1rad = lam/(blength1*1000)
-
             theta1arcsec = theta1rad*rad2arcsec
- 
 
-           
-       
 
             u*=1000 # in m
             v*=1000
 
             u/=lam # in lam
-            v/=lam #
-
-            u/=1000# in klam
-            v/=1000
-
+            v/=lam #      
 
             # each pixel of the fft2 is a frequemcy mode, with mode 0 at centre and nyquist mode at edge
-            # maxfreq = 1/pixsize = 1/0.1 arcsec = 10?
-            nyquist = 1/pix_size
-          
-            scale = nyquist/(len(Z)/2.)
-            u*=scale
-            v*=scale # deal with pix size?
+            # maxfreq = 1/pixsize = eg 1/0.01 arcsec = 100?
+
+            umax = 1/(pix_size/rad2arcsec)
+            vmax = 1/(pix_size/rad2arcsec)
+            umax/=1000
+            vmax/=1000
+           
+            u = u/vmax
+            v = v/vmax
+
             u = (u).astype(np.int)+uv_centre
             v = (v).astype(np.int)+uv_centre
           
@@ -145,35 +130,21 @@ def make_sources(x1,y1,x2,y2,dec,num):
   #  g = mkgauss([source_box_size[0],source_box_size[1]], [(source_box_size[0]-1)/2-1,(source_box_size[1]-1)/2], 1, 3)
     g = mkgauss([101,101], [50,50], 1, 5)
 
-
- 
-
     blc1 = [int(x1-source_box_size[0]/2),int(y1-source_box_size[1]/2)]
     trc1 = [int(x1+source_box_size[0]/2),int(y1+source_box_size[1]/2)]
     blc2 = [int(x2-source_box_size[0]/2),int(y2-source_box_size[1]/2)]
     trc2 = [int(x2+source_box_size[0]/2),int(y2+source_box_size[1]/2)]
 
-
-
     xf[blc1[0]:trc1[0],blc1[1]:trc1[1]]+=g
     xf[blc2[0]:trc2[0],blc2[1]:trc2[1]]+=g
-    #xf[x1, y1] = 10
-    #xf[x1, y1] = 10
-
-
 
     # load real data
     #xf = fits.getdata('../closure_phases_casa/example.fits')
-
-
 
     if doplot:
         plt.imshow(xf)
         plt.show()
     Z = np.fft.fftshift(np.fft.fft2(xf))
-
-
-
     
     fig = plt.figure(figsize=(5,5))
     plt.imshow(xf, cmap = 'gray_r',interpolation = 'none') 
@@ -181,6 +152,7 @@ def make_sources(x1,y1,x2,y2,dec,num):
     plt.subplots_adjust(top = 1, bottom = 0, right = 1, left = 0, hspace = 0, wspace = 0)
     plt.savefig('training_images/B/'+np.str(num)+'.png', box_inches='tight', dpi=64)
     plt.close()
+    plt.clf()
     
 
     # lat and longs of some radio telescopes
@@ -196,74 +168,111 @@ def make_sources(x1,y1,x2,y2,dec,num):
 
 
 
-    # approximate radius of earth in km
-    R = 6373.0
+
     
     lat1 = (Jodrell[0])*rad
     lon1 = (Jodrell[1])*rad
-    lat3 = (Goonhilly[0])*rad
-    lon3 = (Goonhilly[1])*rad
+
     lat2 = (Cambridge[0])*rad
     lon2 = (Cambridge[1])*rad
+
+    lat3 = (Goonhilly[0])*rad
+    lon3 = (Goonhilly[1])*rad
     
  
 
     p1,us1,vs1 = make_dynspec(lat1,lon1,lat2,lon2,Z)
-    p2,us2,vs2 = make_dynspec(lat3,lon3,lat1,lon1,Z) 
-    p3,us3,vs3 = make_dynspec(lat2,lon2,lat3,lon3,Z)
+    p2,us2,vs2 = make_dynspec(lat2,lon2,lat3,lon3,Z) 
+    p3,us3,vs3 = make_dynspec(lat1,lon1,lat3,lon3,Z)
+
+    if doplot:
+        plt.imshow(p1)
+        plt.show()
+        plt.imshow(p2)
+        plt.show()
+        plt.imshow(p3)
+        plt.show()
 
 
-    plt.imshow(p1, cmap = 'jet')
-    plt.show()
-    plt.imshow(p2, cmap = 'jet')
-    plt.show()
-    plt.imshow(p3, cmap = 'jet')
-    plt.show()
-
-
-    wrap_factor = 10.
-    print (p1.shape)
+  
     for i in range(len(p1[:,0])):
-        print (i)
-
-        p1_i = np.unwrap(p1[i,:]*wrap_factor, discont = 0.1)/wrap_factor
-
+       
+        p1_i = np.unwrap(p1[i,:]*wrap_factor, discont = discont_val)/wrap_factor
         try:
             uw_p1_all =  np.vstack((uw_p1_all, p1_i))
         except:
             uw_p1_all =p1_i
 
-
-
     for i in range(len(uw_p1_all[0,:])):
-        print (i)
 
-        p1_i2 = np.unwrap(uw_p1_all[:,i]*wrap_factor, discont = 0.1)/wrap_factor
-
+        p1_i2 = np.unwrap(uw_p1_all[:,i]*wrap_factor, discont = discont_val)/wrap_factor
         try:
             uw_p1_all2 =  np.vstack((uw_p1_all2, p1_i2))
         except:
             uw_p1_all2 =p1_i2
 
 
-    plt.clf()
-    plt.imshow(uw_p1_all.T, origin = 'lower', cmap = 'jet')
-    plt.colorbar()
- #   plt.show()
-    #plt.savefig('unwrapped_dynspc_stacked.png')
-    plt.clf() 
 
-    plt.clf()
-    plt.imshow(uw_p1_all2.T, origin = 'lower', cmap = 'jet')
-    plt.colorbar()
-    plt.show()
-    #plt.savefig('unwrapped_dynspc_stacked.png')
-    plt.clf() 
+    for i in range(len(p2[:,0])):
+ 
+        p2_i = np.unwrap(p2[i,:]*wrap_factor, discont = discont_val)/wrap_factor
+        try:
+            uw_p2_all =  np.vstack((uw_p2_all, p2_i))
+        except:
+            uw_p2_all =p2_i
+
+    for i in range(len(uw_p2_all[0,:])):
+       
+        p2_i2 = np.unwrap(uw_p2_all[:,i]*wrap_factor, discont = discont_val)/wrap_factor
+        try:
+            uw_p2_all2 =  np.vstack((uw_p2_all2, p2_i2))
+        except:
+            uw_p2_all2 =p2_i2
 
 
-    '''
+
+    for i in range(len(p3[:,0])):
+      
+        p3_i = np.unwrap(p3[i,:]*wrap_factor, discont = discont_val)/wrap_factor
+        try:
+            uw_p3_all =  np.vstack((uw_p3_all, p3_i))
+        except:
+            uw_p3_all =p3_i
+
+    for i in range(len(uw_p3_all[0,:])):
+     
+        p3_i2 = np.unwrap(uw_p3_all[:,i]*wrap_factor, discont = discont_val)/wrap_factor
+        try:
+            uw_p3_all2 =  np.vstack((uw_p3_all2, p3_i2))
+        except:
+            uw_p3_all2 =p3_i2        
+
+
+
+
+    if doplot:
+        plt.clf()
+        plt.imshow(uw_p1_all2.T, origin = 'lower')
+        plt.colorbar()
+        plt.show()
+      #  plt.savefig('unwrapped_dynspc_stacked.png')
+        plt.clf() 
+      
+        plt.imshow(uw_p2_all2.T, origin = 'lower')
+        plt.colorbar()
+        plt.show()
+      #  plt.savefig('unwrapped_dynspc_stacked.png')
+        plt.clf() 
+            
+        plt.imshow(uw_p3_all2.T, origin = 'lower')
+        plt.colorbar()
+        plt.show()
+      #  plt.savefig('unwrapped_dynspc_stacked.png')
+        plt.clf() 
+
+    
    
-    closphasdynspec = p1+p2-p3 
+    closphasdynspec = uw_p1_all2+uw_p2_all2-uw_p3_all2
 
 
     if doplot:
@@ -272,31 +281,36 @@ def make_sources(x1,y1,x2,y2,dec,num):
         plt.scatter(us2,vs2)
         plt.scatter(us3,vs3)
         plt.show()
-        plt.scatter(np.arange(len(closphasdynspec[:,0])),closphasdynspec[:,0] )
-        plt.show()
-        plt.scatter(np.arange(len(closphasdynspec[0,:])),closphasdynspec[0,:] )
-        plt.show()
+
     
     fig = plt.figure(figsize=(5,5))
-    plt.imshow(closphasdynspec, interpolation = 'none')
+    plt.imshow(closphasdynspec.T, interpolation = 'none')
     plt.axis("off")
-    plt.subplots_adjust(top = 1, bottom = 0, right = 1, left = 0, hspace = 0, wspace = 0)
+    plt.subplots_adjust(top = 1, bottom = 0, right = 1, left = 0, hspace = 0, wspace = 0) 
+    plt.savefig('training_images/A/'+np.str(num)+'.png', box_inches='tight', dpi=64)
     plt.show()
-    #plt.savefig('training_images/A/'+np.str(num)+'.png', box_inches='tight', dpi=64)
     plt.close()
-    
-    
-    '''
 
+
+# manage wrapping
+discont_val = 0.1
+wrap_factor = 10
+
+# approximate radius of earth in km
+R = 6373.0    
+    
+channels = 64
+sfreq = 1.4e9
+ch_width = 0.004e9
 
 rad2arcsec = 206265.
 c = 3e8
-doplot = 0
-pix_size = 0.01
+doplot = 1
+pix_size = 0.02 # in arcscec
 np.random.seed(1)
 for i in range(4):
     randoms = np.random.rand(5,10000)
-    N = 2084 
+    N = 1024
     # put sources in central  (2 arcsec)
     x1 = (N/2-1/pix_size)+np.int(randoms[0,i]*(2/pix_size))
     y1 = (N/2-1/pix_size)+np.int(randoms[1,i]*(2/pix_size))
