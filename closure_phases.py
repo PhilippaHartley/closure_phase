@@ -55,12 +55,10 @@ def mkgauss (naxes,pos,flux,fwhm,axrat=1.0,angle=0.0,ignore=4.0,dodist=False):
 def make_dynspec(lat1,lon1,lat2,lon2,Z):
     uv_centre = int(len(Z)/2)
     R = 6371
-    rad = (2.*np.pi)/360.
-   
+ 
     raddec = dec*rad
-    x1 = R*np.cos(lon1)*np.cos(lat1)
-  
 
+    x1 = R*np.cos(lon1)*np.cos(lat1) 
     y1 = R*np.sin(lon1)*np.cos(lat1)
     z1 = R*np.sin(lat1)
     x2 = R*np.cos(lon2)*np.cos(lat2)
@@ -73,7 +71,7 @@ def make_dynspec(lat1,lon1,lat2,lon2,Z):
     vs = np.array([])
 
     lamrang = np.linspace(c/sfreq,c/(sfreq+((channels+1)*ch_width)),channels)  
-    hrang =  np.arange(0,120,1)
+    hrang =  np.linspace(0,(intervals+1)*time_int,intervals)
     dynspec = np.zeros((len(lamrang), len(hrang)))
 
     phase_plot = np.angle(Z)
@@ -89,7 +87,6 @@ def make_dynspec(lat1,lon1,lat2,lon2,Z):
             theta1rad = lam/(blength1*1000)
             theta1arcsec = theta1rad*rad2arcsec
 
-
             u*=1000 # in m
             v*=1000
 
@@ -97,11 +94,11 @@ def make_dynspec(lat1,lon1,lat2,lon2,Z):
             v/=lam #      
 
             # each pixel of the fft2 is a frequemcy mode, with mode 0 at centre and nyquist mode at edge
-            # maxfreq = 1/pixsize = eg 1/0.01 arcsec = 100?
+            # maxfreq = 1/pixsize = eg 1/(0.01/rad2arcsec) # pix in radians
 
             umax = 1/(pix_size/rad2arcsec)
             vmax = 1/(pix_size/rad2arcsec)
-            umax/=1000
+            umax/=1000 
             vmax/=1000
            
             u = u/vmax
@@ -115,6 +112,7 @@ def make_dynspec(lat1,lon1,lat2,lon2,Z):
             phas = phase_plot[u,v]
        
             dynspec[lamcount,hcount]+=phas
+
     us = us.astype(np.int)
     vs = vs.astype(np.int)
 
@@ -138,43 +136,42 @@ def make_sources(x1,y1,x2,y2,dec,num):
     xf[blc1[0]:trc1[0],blc1[1]:trc1[1]]+=g
     xf[blc2[0]:trc2[0],blc2[1]:trc2[1]]+=g
 
-    # load real data
-    #xf = fits.getdata('../closure_phases_casa/example.fits')
-
-    if doplot:
-        plt.imshow(xf)
-        plt.show()
     Z = np.fft.fftshift(np.fft.fft2(xf))
     
     fig = plt.figure(figsize=(5,5))
     plt.imshow(xf, cmap = 'gray_r',interpolation = 'none') 
     plt.axis("off")
     plt.subplots_adjust(top = 1, bottom = 0, right = 1, left = 0, hspace = 0, wspace = 0)
-    plt.savefig('training_images/B/'+np.str(num)+'.png', box_inches='tight', dpi=64)
+    fig = plt.gcf()
+    fig.savefig('training_images/B/'+np.str(num)+'.png', box_inches='tight', dpi=64)
+    plt.show()
     plt.close()
-    plt.clf()
+
     
 
     # lat and longs of some radio telescopes
-    lat_longs = np.array([[53.244809, -2.309140],[52.920553, 6.603082],[50.529832, 6.882804],[49.145437, 12.878118],[53.090425, 18.558107],[57.396055, 11.926298],[31.104712, 121.198691],[40.5336, 3.1112],[43.820799, 87.618012],[60.218872, 24.393522],[60.535748, 29.781042],[43.831820, 41.588759],[51.772618, 102.238942],[57.549963, 22.130064],[39.503666, 9.247842],[36.883122, 14.986711],[-25.883272, 27.685024]])
+
+    # European VLBI network
     Effelsberg = [50.5248, 6.8836]
-    Jodrell = [53.2369, -2.3075]
     Yebes = [40.5336, 3.1112]
 
+    # eMERLIN stations nb may not be exact
     Goonhilly =[50.048056, -5.181944]
     Cambridge = [52.167, 0.037056]
+    Jodrell1 = [53.2369, -2.3075]
+    Jodrell2 =  [53.2340, -2.3039]
+    Darnhall = [53.164, -2.547]
+    Knockin = [52.794, -2.993]
+    Pickmere = [53.288, -2.462]
+    Defford = [52.087346, -2.119104 ]
 
     #a source at dec 90 will trace the most circular ellipse in uv
-
-
-
-
     
-    lat1 = (Jodrell[0])*rad
-    lon1 = (Jodrell[1])*rad
+    lat1 = (Cambridge[0])*rad
+    lon1 = (Cambridge[1])*rad
 
-    lat2 = (Cambridge[0])*rad
-    lon2 = (Cambridge[1])*rad
+    lat2 = (Knockin[0])*rad
+    lon2 = (Knockin[1])*rad
 
     lat3 = (Goonhilly[0])*rad
     lon3 = (Goonhilly[1])*rad
@@ -257,16 +254,13 @@ def make_sources(x1,y1,x2,y2,dec,num):
         plt.ylabel('frequency')
         plt.colorbar()
         plt.show()
-      #  plt.savefig('unwrapped_dynspc_stacked.png')
         plt.clf() 
       
         plt.imshow(uw_p2_all2.T, origin = 'lower')
         plt.xlabel('time')
         plt.ylabel('frequency')
         plt.colorbar()
-
         plt.show()
-      #  plt.savefig('unwrapped_dynspc_stacked.png')
         plt.clf() 
             
         plt.imshow(uw_p3_all2.T, origin = 'lower')
@@ -274,12 +268,11 @@ def make_sources(x1,y1,x2,y2,dec,num):
         plt.ylabel('frequency')
         plt.colorbar()
         plt.show()
-      #  plt.savefig('unwrapped_dynspc_stacked.png')
         plt.clf() 
 
     
    
-    closphasdynspec = uw_p1_all2+uw_p2_all2-uw_p3_all2
+    closphasdynspec = uw_p1_all2+uw_p2_all2+uw_p3_all2
 
 
     if doplot:
@@ -296,39 +289,58 @@ def make_sources(x1,y1,x2,y2,dec,num):
     plt.ylabel('frequency')    
     plt.axis("off")
     plt.subplots_adjust(top = 1, bottom = 0, right = 1, left = 0, hspace = 0, wspace = 0) 
-    plt.savefig('training_images/A/'+np.str(num)+'.png', box_inches='tight', dpi=64)
+    fig = plt.gcf()
+    fig.savefig('training_images/A/'+np.str(num)+'.png', box_inches='tight', dpi=64)
     plt.show()
     plt.close()
 
 
-# manage wrapping
+doplot = 1
+
+# manage unwrapping
 discont_val = 0.1
 wrap_factor = 10
 
 # approximate radius of earth in km
 R = 6373.0    
     
-channels = 64
-sfreq = 1.4e9
-ch_width = 0.004e9
+# set up frequency resolution and bandwidth
+channels = 120
+sfreq = 1.4e9 # GHz
+ch_width = 0.008e9 # GHz
 
+# set up time resolution and number of integration times
+time_int = 1 # intergration time in hours
+intervals = 120 # number of integrations
+
+# some constants
 rad2arcsec = 206265.
 c = 3e8
-doplot = 1
-pix_size = 0.02 # in arcscec
+rad = (2.*np.pi)/360.  
+
+
+# image dimensions: also determines dimensions of uv plane (fft2 array)
+pix_size = 0.01 # in arcscec; this will depend on array and should be < half of max resolution of array
+N = 1024
+
+# set up source info
+max_source_gap = 4 # arcsec
+n_sources = 2
+
+
+# select required number of image pairs
+N_images = 2
+
+# seed the random numbers to get reproducible results
 np.random.seed(1)
-for i in range(4):
-    randoms = np.random.rand(5,10000)
-    N = 1024
+for i in range(N_images):
+    randoms = np.random.rand(4,N_images)
     # put sources in central  (2 arcsec)
-    x1 = (N/2-1/pix_size)+np.int(randoms[0,i]*(2/pix_size))
-    y1 = (N/2-1/pix_size)+np.int(randoms[1,i]*(2/pix_size))
-    x2 = (N/2-1/pix_size)+np.int(randoms[2,i]*(2/pix_size))
-    y2 = (N/2-1/pix_size)+np.int(randoms[3,i]*(2/pix_size))
-    dec = 60#randoms[4,i]*90
-
-
-
+    x1 = (N/2-(max_source_gap/2)/pix_size)+np.int(randoms[0,i]*(max_source_gap/pix_size))
+    y1 = (N/2-(max_source_gap/2)/pix_size)+np.int(randoms[1,i]*(max_source_gap/pix_size))
+    x2 = (N/2-(max_source_gap/2)/pix_size)+np.int(randoms[2,i]*(max_source_gap/pix_size))
+    y2 = (N/2-(max_source_gap/2)/pix_size)+np.int(randoms[3,i]*(max_source_gap/pix_size))
+    dec = 60
   
     make_sources(x1,y1,x2,y2,dec,i)
     
