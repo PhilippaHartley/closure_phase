@@ -160,9 +160,7 @@ def make_sources(x1,y1,x2,y2,dec,num):
     Z = np.fft.ifftn(np.fft.ifftshift(xf))
   
 
-    if doplot:
-        plt.imshow(np.angle(Z))
-        plt.show()
+
     
     fig = plt.figure(figsize=(5,5))
     plt.imshow(xf, cmap = 'gray_r',interpolation = 'none') 
