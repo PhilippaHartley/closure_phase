@@ -2,9 +2,13 @@ from scipy.fftpack import ifftn
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
+import matplotlib as mpl
 from math import sin, cos, sqrt, atan2, radians
 from PIL import Image
 from astropy.io import fits
+
+
+mpl.rcParams['image.cmap'] = 'jet'
 
 
 
@@ -54,6 +58,7 @@ def mkgauss (naxes,pos,flux,fwhm,axrat=1.0,angle=0.0,ignore=4.0,dodist=False):
 
 def make_dynspec(lat1,lon1,lat2,lon2,Z):
     uv_centre = int(len(Z)/2)
+    print (uv_centre)
     R = 6371
  
     raddec = dec*rad
@@ -71,7 +76,10 @@ def make_dynspec(lat1,lon1,lat2,lon2,Z):
     vs = np.array([])
 
     lamrang = np.linspace(c/sfreq,c/(sfreq+((channels+1)*ch_width)),channels)  
-    hrang =  np.linspace(0,(intervals+1)*time_int,intervals)
+
+    print (lamrang)
+    hrang =  np.linspace(0,(n_intervals+1)*time_int,n_intervals)
+    print (hrang)
     dynspec = np.zeros((len(lamrang), len(hrang)))
 
     phase_plot = np.angle(Z)
@@ -82,16 +90,20 @@ def make_dynspec(lat1,lon1,lat2,lon2,Z):
             h = h*rad
             u = np.sin(h)*dx+np.cos(h)*dy
             v = -np.sin(raddec)*np.cos(h)*dx+np.sin(raddec)*np.sin(h)*dy+np.cos(raddec)*dz
-            blength1 = (np.hypot(u,v))# in km!!!
+            blength1 = (np.hypot(u,v))# in km!
+
        
             theta1rad = lam/(blength1*1000)
             theta1arcsec = theta1rad*rad2arcsec
+           
 
             u*=1000 # in m
             v*=1000
 
             u/=lam # in lam
             v/=lam #      
+
+          
 
             # each pixel of the fft2 is a frequemcy mode, with mode 0 at centre and nyquist mode at edge
             # maxfreq = 1/pixsize = eg 1/(0.01/rad2arcsec) # pix in radians
@@ -126,17 +138,31 @@ def make_sources(x1,y1,x2,y2,dec,num):
     xf = np.zeros((N, N))
     source_box_size = [101,101]
   #  g = mkgauss([source_box_size[0],source_box_size[1]], [(source_box_size[0]-1)/2-1,(source_box_size[1]-1)/2], 1, 3)
-    g = mkgauss([101,101], [50,50], 1, 5)
-
+    g = mkgauss([101,101], [50,50], 1, 1)
+    print (x1, x2)
     blc1 = [int(x1-source_box_size[0]/2),int(y1-source_box_size[1]/2)]
     trc1 = [int(x1+source_box_size[0]/2),int(y1+source_box_size[1]/2)]
     blc2 = [int(x2-source_box_size[0]/2),int(y2-source_box_size[1]/2)]
     trc2 = [int(x2+source_box_size[0]/2),int(y2+source_box_size[1]/2)]
 
+
+    # add gaussians
     xf[blc1[0]:trc1[0],blc1[1]:trc1[1]]+=g
     xf[blc2[0]:trc2[0],blc2[1]:trc2[1]]+=g
 
-    Z = np.fft.fftshift(np.fft.fft2(xf))
+
+    # add single pixels
+  #  xf[int(x1), int(y1)] = 1
+  #  xf[int(x2), int(y2)] = 1
+
+    
+    # shift *before* doing the ifft: removes phase jumps
+    Z = np.fft.ifftn(np.fft.ifftshift(xf))
+  
+
+    if doplot:
+        plt.imshow(np.angle(Z))
+        plt.show()
     
     fig = plt.figure(figsize=(5,5))
     plt.imshow(xf, cmap = 'gray_r',interpolation = 'none') 
@@ -175,104 +201,28 @@ def make_sources(x1,y1,x2,y2,dec,num):
 
     lat3 = (Goonhilly[0])*rad
     lon3 = (Goonhilly[1])*rad
-    
- 
 
     p1,us1,vs1 = make_dynspec(lat1,lon1,lat2,lon2,Z)
     p2,us2,vs2 = make_dynspec(lat2,lon2,lat3,lon3,Z) 
     p3,us3,vs3 = make_dynspec(lat1,lon1,lat3,lon3,Z)
+    closphasdynspec = p1+p2-p3    
 
     if doplot:
+        plt.subplot(221)
         plt.imshow(p1)
-        plt.show()
+        plt.colorbar()
+        plt.subplot(222)
         plt.imshow(p2)
-        plt.show()
+        plt.colorbar()
+        plt.subplot(223)        
         plt.imshow(p3)
-        plt.show()
-
-
-  
-    for i in range(len(p1[:,0])):
-       
-        p1_i = np.unwrap(p1[i,:]*wrap_factor, discont = discont_val)/wrap_factor
-        try:
-            uw_p1_all =  np.vstack((uw_p1_all, p1_i))
-        except:
-            uw_p1_all =p1_i
-
-    for i in range(len(uw_p1_all[0,:])):
-
-        p1_i2 = np.unwrap(uw_p1_all[:,i]*wrap_factor, discont = discont_val)/wrap_factor
-        try:
-            uw_p1_all2 =  np.vstack((uw_p1_all2, p1_i2))
-        except:
-            uw_p1_all2 =p1_i2
-
-
-
-    for i in range(len(p2[:,0])):
- 
-        p2_i = np.unwrap(p2[i,:]*wrap_factor, discont = discont_val)/wrap_factor
-        try:
-            uw_p2_all =  np.vstack((uw_p2_all, p2_i))
-        except:
-            uw_p2_all =p2_i
-
-    for i in range(len(uw_p2_all[0,:])):
-       
-        p2_i2 = np.unwrap(uw_p2_all[:,i]*wrap_factor, discont = discont_val)/wrap_factor
-        try:
-            uw_p2_all2 =  np.vstack((uw_p2_all2, p2_i2))
-        except:
-            uw_p2_all2 =p2_i2
-
-
-
-    for i in range(len(p3[:,0])):
-      
-        p3_i = np.unwrap(p3[i,:]*wrap_factor, discont = discont_val)/wrap_factor
-        try:
-            uw_p3_all =  np.vstack((uw_p3_all, p3_i))
-        except:
-            uw_p3_all =p3_i
-
-    for i in range(len(uw_p3_all[0,:])):
-     
-        p3_i2 = np.unwrap(uw_p3_all[:,i]*wrap_factor, discont = discont_val)/wrap_factor
-        try:
-            uw_p3_all2 =  np.vstack((uw_p3_all2, p3_i2))
-        except:
-            uw_p3_all2 =p3_i2        
-
-
-
-
-    if doplot:
-        plt.clf()
-        plt.imshow(uw_p1_all2.T, origin = 'lower')
-        plt.xlabel('time')
-        plt.ylabel('frequency')
         plt.colorbar()
-        plt.show()
-        plt.clf() 
-      
-        plt.imshow(uw_p2_all2.T, origin = 'lower')
-        plt.xlabel('time')
-        plt.ylabel('frequency')
+        plt.subplot(224)   
+        plt.imshow(closphasdynspec)
         plt.colorbar()
-        plt.show()
-        plt.clf() 
-            
-        plt.imshow(uw_p3_all2.T, origin = 'lower')
-        plt.xlabel('time')
-        plt.ylabel('frequency')
-        plt.colorbar()
-        plt.show()
-        plt.clf() 
+        plt.show()             
 
-    
-   
-    closphasdynspec = uw_p1_all2+uw_p2_all2+uw_p3_all2
+
 
 
     if doplot:
@@ -281,7 +231,6 @@ def make_sources(x1,y1,x2,y2,dec,num):
         plt.scatter(us2,vs2)
         plt.scatter(us3,vs3)
         plt.show()
-
     
     fig = plt.figure(figsize=(5,5))
     plt.imshow(closphasdynspec.T, interpolation = 'none')
@@ -291,7 +240,6 @@ def make_sources(x1,y1,x2,y2,dec,num):
     plt.subplots_adjust(top = 1, bottom = 0, right = 1, left = 0, hspace = 0, wspace = 0) 
     fig = plt.gcf()
     fig.savefig('training_images/A/'+np.str(num)+'.png', box_inches='tight', dpi=64)
-    plt.show()
     plt.close()
 
 
@@ -305,13 +253,16 @@ wrap_factor = 10
 R = 6373.0    
     
 # set up frequency resolution and bandwidth
-channels = 120
+channels = 64
 sfreq = 1.4e9 # GHz
 ch_width = 0.008e9 # GHz
 
 # set up time resolution and number of integration times
-time_int = 1 # intergration time in hours
-intervals = 120 # number of integrations
+time_range = 6 # hours
+hours2deg = 360/24
+hrang_max = time_range*hours2deg
+n_intervals = 64 # number of integrations
+time_int = hrang_max/n_intervals
 
 # some constants
 rad2arcsec = 206265.
@@ -320,16 +271,16 @@ rad = (2.*np.pi)/360.
 
 
 # image dimensions: also determines dimensions of uv plane (fft2 array)
-pix_size = 0.01 # in arcscec; this will depend on array and should be < half of max resolution of array
-N = 1024
+pix_size = 0.01 # in arcscec; this will depend on array and should be < half of max resolution of array (0.2arcsec for 1.4 GHz eMERLIN)
+N = 1025
 
 # set up source info
-max_source_gap = 4 # arcsec
+max_source_gap = 1 # arcsec
 n_sources = 2
 
 
 # select required number of image pairs
-N_images = 2
+N_images = 1
 
 # seed the random numbers to get reproducible results
 np.random.seed(1)
@@ -341,6 +292,13 @@ for i in range(N_images):
     x2 = (N/2-(max_source_gap/2)/pix_size)+np.int(randoms[2,i]*(max_source_gap/pix_size))
     y2 = (N/2-(max_source_gap/2)/pix_size)+np.int(randoms[3,i]*(max_source_gap/pix_size))
     dec = 60
+
+    # test with one source in centre and one located max_source_gap away
+    x1 = (N/2)
+    y1 = (N/2)
+    x2 = (N/2)
+    y2 = (N/2+(max_source_gap)/pix_size)
+
   
     make_sources(x1,y1,x2,y2,dec,i)
     

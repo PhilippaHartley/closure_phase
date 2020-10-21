@@ -1,0 +1,53 @@
+from scipy.fftpack import ifftn
+import numpy as np
+import matplotlib.pyplot as plt
+
+import matplotlib.cm as cm
+
+N = 1000
+f, ((ax1, ax2, ax3), (ax4, ax5, ax6)) = plt.subplots(2, 3, sharex='col', sharey='row')
+
+xf = np.zeros((N,N))
+
+xf[490, 510] = 1
+
+#x#f[0, N-5] = 1
+
+Z = ifftn(np.fft.ifftshift(xf))
+print (Z.shape)
+Z2 = ifftn(xf)
+phas = np.angle(Z)
+print (Z)
+print (Z2)
+phasuw = np.unwrap((phas), axis = 0 )
+phasuw2 = np.unwrap(phasuw, axis = 1)
+
+ax1.imshow(xf, cmap=cm.Reds)
+
+ax4.imshow(phas, cmap=cm.gray)
+
+xf = np.zeros((N, N))
+
+xf[5, 0] = 1
+
+xf[N-5, 0] = 1
+
+Z = ifftn(xf)
+
+ax2.imshow(xf, cmap=cm.Reds)
+
+ax5.imshow(np.real(Z), cmap=cm.gray)
+
+xf = np.zeros((N, N))
+
+xf[5, 10] = 1
+
+xf[N-5, N-10] = 1
+
+Z = ifftn(xf)
+
+ax3.imshow(xf, cmap=cm.Reds)
+
+ax6.imshow(np.real(Z), cmap=cm.gray)
+
+plt.show()
