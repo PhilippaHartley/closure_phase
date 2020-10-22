@@ -286,7 +286,7 @@ rad = (2.*np.pi)/360.
 
 
 pix_size = 0.02 # in arcscec; this will depend on array and should be < half of max resolution of array (0.2arcsec for 1.4 GHz eMERLIN)
-N = 1025
+N = 2048
 
 # set up source info
 max_source_gap = 1 # arcsec
