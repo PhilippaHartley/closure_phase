@@ -58,7 +58,7 @@ def mkgauss (naxes,pos,flux,fwhm,axrat=1.0,angle=0.0,ignore=4.0,dodist=False):
 
 def make_dynspec(lat1,lon1,lat2,lon2,Z):
     uv_centre = int(len(Z)/2)
-    print (uv_centre)
+
     R = 6371
  
     raddec = dec*rad
@@ -77,12 +77,21 @@ def make_dynspec(lat1,lon1,lat2,lon2,Z):
 
     lamrang = np.linspace(c/sfreq,c/(sfreq+((channels+1)*ch_width)),channels)  
 
-    print (lamrang)
+ 
     hrang =  np.linspace(0,(n_intervals+1)*time_int,n_intervals)
-    print (hrang)
+  
     dynspec = np.zeros((len(lamrang), len(hrang)))
 
     phase_plot = np.angle(Z)
+
+
+    # each pixel of the fft2 is a frequemcy mode, with mode 0 at centre and nyquist mode at edge
+    # maxfreq = 1/pixsize = eg 1/(0.01/rad2arcsec) # pix in radians
+    umax = 1/(pix_size/rad2arcsec)
+    vmax = 1/(pix_size/rad2arcsec) # lamda
+    umax/=1000 
+    vmax/=1000 # kilo lamda
+    print (umax)
     for lamcount, lam in enumerate(lamrang):
         
         # hour angle begins from same value each time, as if the sources all have same RA
@@ -96,25 +105,22 @@ def make_dynspec(lat1,lon1,lat2,lon2,Z):
             theta1rad = lam/(blength1*1000)
             theta1arcsec = theta1rad*rad2arcsec
            
-
             u*=1000 # in m
             v*=1000
 
             u/=lam # in lam
-            v/=lam #      
+            v/=lam #    
 
-          
-
-            # each pixel of the fft2 is a frequemcy mode, with mode 0 at centre and nyquist mode at edge
-            # maxfreq = 1/pixsize = eg 1/(0.01/rad2arcsec) # pix in radians
-
-            umax = 1/(pix_size/rad2arcsec)
-            vmax = 1/(pix_size/rad2arcsec)
-            umax/=1000 
-            vmax/=1000
-           
-            u = u/vmax
+            u/=1000 # in kilo lam
+            v/=1000 # 
+                      
+            # fractional u, v 
+            u = u/umax
             v = v/vmax
+
+            # u, v in units of pixels
+            u = u*uv_centre
+            v = v*uv_centre
 
             u = (u).astype(np.int)+uv_centre
             v = (v).astype(np.int)+uv_centre
@@ -124,6 +130,8 @@ def make_dynspec(lat1,lon1,lat2,lon2,Z):
             phas = phase_plot[u,v]
        
             dynspec[lamcount,hcount]+=phas
+
+
 
     us = us.astype(np.int)
     vs = vs.astype(np.int)
@@ -138,8 +146,8 @@ def make_sources(x1,y1,x2,y2,dec,num):
     xf = np.zeros((N, N))
     source_box_size = [101,101]
   #  g = mkgauss([source_box_size[0],source_box_size[1]], [(source_box_size[0]-1)/2-1,(source_box_size[1]-1)/2], 1, 3)
-    g = mkgauss([101,101], [50,50], 1, 1)
-    print (x1, x2)
+    g = mkgauss([101,101], [50,50], 1, 10)
+  
     blc1 = [int(x1-source_box_size[0]/2),int(y1-source_box_size[1]/2)]
     trc1 = [int(x1+source_box_size[0]/2),int(y1+source_box_size[1]/2)]
     blc2 = [int(x2-source_box_size[0]/2),int(y2-source_box_size[1]/2)]
@@ -147,20 +155,25 @@ def make_sources(x1,y1,x2,y2,dec,num):
 
 
     # add gaussians
-    xf[blc1[0]:trc1[0],blc1[1]:trc1[1]]+=g
-    xf[blc2[0]:trc2[0],blc2[1]:trc2[1]]+=g
+   # xf[blc1[0]:trc1[0],blc1[1]:trc1[1]]+=g
+   # xf[blc2[0]:trc2[0],blc2[1]:trc2[1]]+=g
 
 
     # add single pixels
-  #  xf[int(x1), int(y1)] = 1
-  #  xf[int(x2), int(y2)] = 1
+    xf[int(x1), int(y1)] = 1
+    xf[int(x2), int(y2)] = 1
 
     
     # shift *before* doing the ifft: removes phase jumps
     Z = np.fft.ifftn(np.fft.ifftshift(xf))
   
 
+    if doplot:
+        plt.imshow(np.angle(Z))
+        plt.colorbar()
+        plt.show()
 
+ 
     
     fig = plt.figure(figsize=(5,5))
     plt.imshow(xf, cmap = 'gray_r',interpolation = 'none') 
@@ -251,16 +264,20 @@ wrap_factor = 10
 R = 6373.0    
     
 # set up frequency resolution and bandwidth
-channels = 64
+bandwidth = 0.2e9 # GHz
+channels = 100
 sfreq = 1.4e9 # GHz
-ch_width = 0.008e9 # GHz
+ch_width = bandwidth/channels # GHz
 
 # set up time resolution and number of integration times
 time_range = 6 # hours
 hours2deg = 360/24
 hrang_max = time_range*hours2deg
-n_intervals = 64 # number of integrations
+n_intervals =  100 # number of integrations
 time_int = hrang_max/n_intervals
+
+# set up declination
+dec = 60
 
 # some constants
 rad2arcsec = 206265.
@@ -268,8 +285,7 @@ c = 3e8
 rad = (2.*np.pi)/360.  
 
 
-# image dimensions: also determines dimensions of uv plane (fft2 array)
-pix_size = 0.01 # in arcscec; this will depend on array and should be < half of max resolution of array (0.2arcsec for 1.4 GHz eMERLIN)
+pix_size = 0.02 # in arcscec; this will depend on array and should be < half of max resolution of array (0.2arcsec for 1.4 GHz eMERLIN)
 N = 1025
 
 # set up source info
