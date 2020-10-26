@@ -146,27 +146,30 @@ def make_sources(x1,y1,x2,y2,dec,num):
     xf = np.zeros((N, N))
     source_box_size = [101,101]
   #  g = mkgauss([source_box_size[0],source_box_size[1]], [(source_box_size[0]-1)/2-1,(source_box_size[1]-1)/2], 1, 3)
-    g = mkgauss([101,101], [50,50], 1, 10)
+    g = mkgauss([101,101], [50,50], 1, 0.1)
   
-    blc1 = [int(x1-source_box_size[0]/2),int(y1-source_box_size[1]/2)]
-    trc1 = [int(x1+source_box_size[0]/2),int(y1+source_box_size[1]/2)]
-    blc2 = [int(x2-source_box_size[0]/2),int(y2-source_box_size[1]/2)]
-    trc2 = [int(x2+source_box_size[0]/2),int(y2+source_box_size[1]/2)]
+    blc1 = [int(y1-source_box_size[1]/2),int(x1-source_box_size[0]/2)] # corrected axis order
+    trc1 = [int(y1+source_box_size[1]/2),int(x1+source_box_size[0]/2)]
+    blc2 = [int(y2-source_box_size[1]/2),int(x2-source_box_size[0]/2)]
+    trc2 = [int(y2+source_box_size[1]/2),int(x2+source_box_size[0]/2)] 
 
 
     # add gaussians
-   # xf[blc1[0]:trc1[0],blc1[1]:trc1[1]]+=g
-   # xf[blc2[0]:trc2[0],blc2[1]:trc2[1]]+=g
+ #   xf[blc1[0]:trc1[0],blc1[1]:trc1[1]]+=g
+ #   xf[blc2[0]:trc2[0],blc2[1]:trc2[1]]+=g
 
 
     # add single pixels
-    xf[int(x1), int(y1)] = 1
-    xf[int(x2), int(y2)] = 1
+    xf[int(y1),int(x1)] = 1
+    xf[int(y2),int(x2)] = 1
 
     
     # shift *before* doing the ifft: removes phase jumps
-    Z = np.fft.ifftn(np.fft.ifftshift(xf))
+    Z = np.fft.ifftn(np.fft.fftshift(xf))
   
+
+    # without shift
+  #  Z = np.fft.ifftshift(np.fft.ifftn((xf)))
 
     if doplot:
         plt.imshow(np.angle(Z))
@@ -218,6 +221,123 @@ def make_sources(x1,y1,x2,y2,dec,num):
     p3,us3,vs3 = make_dynspec(lat1,lon1,lat3,lon3,Z)
     closphasdynspec = p1+p2-p3    
 
+
+    for i in range(len(p1[:,0])):
+       
+        p1_i = np.unwrap(p1[i,:]*wrap_factor, discont = discont_val)/wrap_factor
+        try:
+            uw_p1_all =  np.vstack((uw_p1_all, p1_i))
+        except:
+            uw_p1_all =p1_i
+
+    for i in range(len(uw_p1_all[0,:])):
+
+        p1_i2 = np.unwrap(uw_p1_all[:,i]*wrap_factor, discont = discont_val)/wrap_factor
+        try:
+            uw_p1_all2 =  np.vstack((uw_p1_all2, p1_i2))
+        except:
+            uw_p1_all2 =p1_i2
+
+
+
+    for i in range(len(p2[:,0])):
+ 
+        p2_i = np.unwrap(p2[i,:]*wrap_factor, discont = discont_val)/wrap_factor
+        try:
+            uw_p2_all =  np.vstack((uw_p2_all, p2_i))
+        except:
+            uw_p2_all =p2_i
+
+    for i in range(len(uw_p2_all[0,:])):
+       
+        p2_i2 = np.unwrap(uw_p2_all[:,i]*wrap_factor, discont = discont_val)/wrap_factor
+        try:
+            uw_p2_all2 =  np.vstack((uw_p2_all2, p2_i2))
+        except:
+            uw_p2_all2 =p2_i2
+
+
+
+    for i in range(len(p3[:,0])):
+      
+        p3_i = np.unwrap(p3[i,:]*wrap_factor, discont = discont_val)/wrap_factor
+        try:
+            uw_p3_all =  np.vstack((uw_p3_all, p3_i))
+        except:
+            uw_p3_all =p3_i
+
+    for i in range(len(uw_p3_all[0,:])):
+     
+        p3_i2 = np.unwrap(uw_p3_all[:,i]*wrap_factor, discont = discont_val)/wrap_factor
+        try:
+            uw_p3_all2 =  np.vstack((uw_p3_all2, p3_i2))
+        except:
+            uw_p3_all2 =p3_i2 
+
+
+
+    closphasdynspec_uw = uw_p1_all2 + uw_p2_all2 - uw_p3_all2            
+
+    plt.subplot(141)
+    plt.imshow(uw_p1_all2)
+    plt.subplot(142)
+    plt.imshow(uw_p2_all2)
+    plt.subplot(143)
+    plt.imshow(uw_p3_all2)
+    plt.subplot(144)
+    plt.imshow(closphasdynspec_uw)
+    plt.show()  
+    print  (uw_p1_all2[:,0])
+
+
+
+    '''
+    uw_p1_all2+=np.pi
+    uw_p2_all2+=np.pi
+    uw_p3_all2+=np.pi
+    print  (uw_p1_all2[:,0])
+    uw_p1_all2 = (uw_p1_all2)%(2*np.pi)
+    uw_p2_all2 = (uw_p2_all2)%(2*np.pi)
+    uw_p3_all2 = (uw_p3_all2)%(2*np.pi)
+    print  (uw_p1_all2[:,0])
+    uw_p1_all2-=np.pi
+    uw_p2_all2-=np.pi
+    uw_p3_all2-=np.pi
+
+    print  (uw_p1_all2[:,0])
+    closphasdynspec_uw = uw_p1_all2 + uw_p2_all2 - uw_p3_all2
+
+    plt.subplot(141)
+    plt.imshow(uw_p1_all2)
+    plt.subplot(142)
+    plt.imshow(uw_p2_all2)
+    plt.subplot(143)
+    plt.imshow(uw_p3_all2)
+    plt.subplot(144)
+    plt.imshow(closphasdynspec_uw)
+    plt.show()        
+
+
+
+
+   # closphasdynspec = uw_p2_all2
+    closphasdynspec2 = np.copy(closphasdynspec)
+
+
+    np.putmask(closphasdynspec2, closphasdynspec>np.pi, closphasdynspec-2*np.pi)
+    closphasdynspec3 = np.copy(closphasdynspec2)
+    np.putmask(closphasdynspec3, closphasdynspec<-np.pi, closphasdynspec+2*np.pi)
+
+    plt.subplot(131)
+    plt.imshow(closphasdynspec)
+    plt.subplot(132)
+    plt.imshow(closphasdynspec2)
+    plt.subplot(133)
+    plt.imshow(closphasdynspec3)
+    plt.show()
+    
+
+
     if doplot:
         plt.subplot(221)
         plt.imshow(p1)
@@ -254,11 +374,14 @@ def make_sources(x1,y1,x2,y2,dec,num):
     plt.close()
 
 
+    '''
+
+
 doplot = 1
 
 # manage unwrapping
-discont_val = 0.1
-wrap_factor = 10
+discont_val = 0.5
+wrap_factor = 1
 
 # approximate radius of earth in km
 R = 6373.0    
@@ -286,7 +409,7 @@ rad = (2.*np.pi)/360.
 
 
 pix_size = 0.02 # in arcscec; this will depend on array and should be < half of max resolution of array (0.2arcsec for 1.4 GHz eMERLIN)
-N = 2048
+N = 5126 # increasing this helps with smoothness but doesn't help with wrapping
 
 # set up source info
 max_source_gap = 1 # arcsec
@@ -307,12 +430,17 @@ for i in range(N_images):
     y2 = (N/2-(max_source_gap/2)/pix_size)+np.int(randoms[3,i]*(max_source_gap/pix_size))
     dec = 60
 
-    # test with one source in centre and one located max_source_gap away
-    x1 = (N/2)
-    y1 = (N/2)
-    x2 = (N/2)
-    y2 = (N/2+(max_source_gap)/pix_size)
+    shift = 0.1 # arcsec
 
+    print (shift/pix_size)
+    # test with one source in centre+shift and one located max_source_gap+shift away
+    x1 = (N/2)+ shift/pix_size
+    y1 = (N/2)+ shift/pix_size
+    x2 = (N/2)+ shift/pix_size
+    y2 = (N/2)+(shift/pix_size)+(max_source_gap/pix_size)
+    print (y2-y1)
+    print (x1, y1)
+    print (x2, y2)
   
     make_sources(x1,y1,x2,y2,dec,i)
     
