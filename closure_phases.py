@@ -278,103 +278,19 @@ def make_sources(x1,y1,x2,y2,dec,num):
 
     closphasdynspec_uw = uw_p1_all2 + uw_p2_all2 - uw_p3_all2            
 
-    plt.subplot(141)
+    plt.subplot(221)
     plt.imshow(uw_p1_all2)
-    plt.subplot(142)
+    plt.subplot(222)
     plt.imshow(uw_p2_all2)
-    plt.subplot(143)
+    plt.subplot(223)
     plt.imshow(uw_p3_all2)
-    plt.subplot(144)
+    plt.subplot(224)
     plt.imshow(closphasdynspec_uw)
     plt.show()  
     print  (uw_p1_all2[:,0])
 
 
 
-    '''
-    uw_p1_all2+=np.pi
-    uw_p2_all2+=np.pi
-    uw_p3_all2+=np.pi
-    print  (uw_p1_all2[:,0])
-    uw_p1_all2 = (uw_p1_all2)%(2*np.pi)
-    uw_p2_all2 = (uw_p2_all2)%(2*np.pi)
-    uw_p3_all2 = (uw_p3_all2)%(2*np.pi)
-    print  (uw_p1_all2[:,0])
-    uw_p1_all2-=np.pi
-    uw_p2_all2-=np.pi
-    uw_p3_all2-=np.pi
-
-    print  (uw_p1_all2[:,0])
-    closphasdynspec_uw = uw_p1_all2 + uw_p2_all2 - uw_p3_all2
-
-    plt.subplot(141)
-    plt.imshow(uw_p1_all2)
-    plt.subplot(142)
-    plt.imshow(uw_p2_all2)
-    plt.subplot(143)
-    plt.imshow(uw_p3_all2)
-    plt.subplot(144)
-    plt.imshow(closphasdynspec_uw)
-    plt.show()        
-
-
-
-
-   # closphasdynspec = uw_p2_all2
-    closphasdynspec2 = np.copy(closphasdynspec)
-
-
-    np.putmask(closphasdynspec2, closphasdynspec>np.pi, closphasdynspec-2*np.pi)
-    closphasdynspec3 = np.copy(closphasdynspec2)
-    np.putmask(closphasdynspec3, closphasdynspec<-np.pi, closphasdynspec+2*np.pi)
-
-    plt.subplot(131)
-    plt.imshow(closphasdynspec)
-    plt.subplot(132)
-    plt.imshow(closphasdynspec2)
-    plt.subplot(133)
-    plt.imshow(closphasdynspec3)
-    plt.show()
-    
-
-
-    if doplot:
-        plt.subplot(221)
-        plt.imshow(p1)
-        plt.colorbar()
-        plt.subplot(222)
-        plt.imshow(p2)
-        plt.colorbar()
-        plt.subplot(223)        
-        plt.imshow(p3)
-        plt.colorbar()
-        plt.subplot(224)   
-        plt.imshow(closphasdynspec)
-        plt.colorbar()
-        plt.show()             
-
-
-
-
-    if doplot:
-        # plot uv coverage of the three antennae (making three baselines)
-        plt.scatter(us1,vs1)
-        plt.scatter(us2,vs2)
-        plt.scatter(us3,vs3)
-        plt.show()
-    
-    fig = plt.figure(figsize=(5,5))
-    plt.imshow(closphasdynspec.T, interpolation = 'none')
-    plt.xlabel('time')
-    plt.ylabel('frequency')    
-    plt.axis("off")
-    plt.subplots_adjust(top = 1, bottom = 0, right = 1, left = 0, hspace = 0, wspace = 0) 
-    fig = plt.gcf()
-    fig.savefig('training_images/A/'+np.str(num)+'.png', box_inches='tight', dpi=64)
-    plt.close()
-
-
-    '''
 
 
 doplot = 1
