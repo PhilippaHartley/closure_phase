@@ -91,7 +91,7 @@ def make_dynspec(lat1,lon1,lat2,lon2,Z):
     vmax = 1/(pix_size/rad2arcsec) # lamda
     umax/=1000 
     vmax/=1000 # kilo lamda
-    print (umax)
+  
     for lamcount, lam in enumerate(lamrang):
         
         # hour angle begins from same value each time, as if the sources all have same RA
@@ -144,48 +144,60 @@ def make_sources(x1,y1,x2,y2,dec,num):
 
     rad = (2.*np.pi)/360.
     xf = np.zeros((N, N))
-    source_box_size = [101,101]
+    source_box_size = 101
   #  g = mkgauss([source_box_size[0],source_box_size[1]], [(source_box_size[0]-1)/2-1,(source_box_size[1]-1)/2], 1, 3)
-    g = mkgauss([101,101], [50,50], 1, 0.1)
+    pos = np.ceil(source_box_size/2)
+    g = mkgauss([source_box_size,source_box_size], [pos,pos], 1, 10)
   
-    blc1 = [int(y1-source_box_size[1]/2),int(x1-source_box_size[0]/2)] # corrected axis order
-    trc1 = [int(y1+source_box_size[1]/2),int(x1+source_box_size[0]/2)]
-    blc2 = [int(y2-source_box_size[1]/2),int(x2-source_box_size[0]/2)]
-    trc2 = [int(y2+source_box_size[1]/2),int(x2+source_box_size[0]/2)] 
-
+    blc1 = [int(y1-source_box_size/2),int(x1-source_box_size/2)] # corrected axis order
+    trc1 = [int(y1+source_box_size/2),int(x1+source_box_size/2)]
+    blc2 = [int(y2-source_box_size/2),int(x2-source_box_size/2)]
+    trc2 = [int(y2+source_box_size/2),int(x2+source_box_size/2)] 
+    print (blc1, blc2, trc1, trc2)
 
     # add gaussians
- #   xf[blc1[0]:trc1[0],blc1[1]:trc1[1]]+=g
- #   xf[blc2[0]:trc2[0],blc2[1]:trc2[1]]+=g
+  #  xf[blc1[0]:trc1[0],blc1[1]:trc1[1]]+=g
+  #  xf[blc2[0]:trc2[0],blc2[1]:trc2[1]]+=g
 
 
     # add single pixels
     xf[int(y1),int(x1)] = 1
     xf[int(y2),int(x2)] = 1
 
+
+    if doplot:
+        plt.imshow(xf, cmap = 'gray_r',interpolation = 'none')
+        plt.xlabel('RA, pixels')
+        plt.ylabel('Dec, pixels')
+        plt.title('sky image')
+        plt.show()
     
     # shift *before* doing the ifft: removes phase jumps
     Z = np.fft.ifftn(np.fft.fftshift(xf))
   
 
-    # without shift
-  #  Z = np.fft.ifftshift(np.fft.ifftn((xf)))
 
-    if doplot:
-        plt.imshow(np.angle(Z))
-        plt.colorbar()
-        plt.show()
+
+
 
  
     
     fig = plt.figure(figsize=(5,5))
-    plt.imshow(xf, cmap = 'gray_r',interpolation = 'none') 
+    plt.imshow(xf, cmap = 'gray_r',interpolation = 'none')   
     plt.axis("off")
     plt.subplots_adjust(top = 1, bottom = 0, right = 1, left = 0, hspace = 0, wspace = 0)
     fig = plt.gcf()
     fig.savefig('training_images/B/'+np.str(num)+'.png', box_inches='tight', dpi=64)
-    plt.show()
+  
     plt.close()
+
+    if doplot:
+        plt.imshow(np.angle(Z))
+        plt.xlabel('u index')
+        plt.ylabel('v index')
+        plt.title('(still wrapped) phase part of Fourier tranformed image')
+        plt.colorbar()
+        plt.show()
 
     
 
@@ -277,17 +289,36 @@ def make_sources(x1,y1,x2,y2,dec,num):
 
 
     closphasdynspec_uw = uw_p1_all2 + uw_p2_all2 - uw_p3_all2            
+ 
+ 
+
 
     plt.subplot(221)
     plt.imshow(uw_p1_all2)
+    plt.title('unwrapped phases 12')
     plt.subplot(222)
     plt.imshow(uw_p2_all2)
+    plt.title('unwrapped phases 23')
     plt.subplot(223)
     plt.imshow(uw_p3_all2)
+    plt.title('unwrapped phases 13')
     plt.subplot(224)
     plt.imshow(closphasdynspec_uw)
+    plt.title('closure phases')
+    plt.tight_layout()
     plt.show()  
-    print  (uw_p1_all2[:,0])
+
+
+    fig = plt.figure(figsize=(5,5))
+    plt.imshow(closphasdynspec_uw, interpolation = 'none')
+    plt.xlabel('time')
+    plt.ylabel('frequency')    
+    plt.axis("off")
+    plt.subplots_adjust(top = 1, bottom = 0, right = 1, left = 0, hspace = 0, wspace = 0) 
+    fig = plt.gcf()
+    fig.savefig('training_images/A/'+np.str(num)+'.png', box_inches='tight', dpi=64)
+    plt.close()
+ 
 
 
 
@@ -331,7 +362,6 @@ N = 5126 # increasing this helps with smoothness but doesn't help with wrapping
 max_source_gap = 1 # arcsec
 n_sources = 2
 
-
 # select required number of image pairs
 N_images = 1
 
@@ -346,17 +376,15 @@ for i in range(N_images):
     y2 = (N/2-(max_source_gap/2)/pix_size)+np.int(randoms[3,i]*(max_source_gap/pix_size))
     dec = 60
 
-    shift = 0.1 # arcsec
+    shift = 0. # arcsec
 
-    print (shift/pix_size)
+
     # test with one source in centre+shift and one located max_source_gap+shift away
-    x1 = (N/2)+ shift/pix_size
+    x1 = (N/2)
     y1 = (N/2)+ shift/pix_size
-    x2 = (N/2)+ shift/pix_size
+    x2 = (N/2)
     y2 = (N/2)+(shift/pix_size)+(max_source_gap/pix_size)
-    print (y2-y1)
-    print (x1, y1)
-    print (x2, y2)
+
   
     make_sources(x1,y1,x2,y2,dec,i)
     
